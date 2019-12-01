@@ -84,18 +84,33 @@ class VisualizationDemo(object):
         Yields:
             ndarray: BGR visualizations of each video frame.
         """
+
         video_visualizer = VideoVisualizer(self.metadata, self.instance_mode)
 
         def process_predictions(frame, predictions):
-            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR) # convert from RGB to BGR
+            # choose mode
             if "panoptic_seg" in predictions:
                 panoptic_seg, segments_info = predictions["panoptic_seg"]
                 vis_frame = video_visualizer.draw_panoptic_seg_predictions(
                     frame, panoptic_seg.to(self.cpu_device), segments_info
                 )
+            # instance segmentation mode 
+            # what is in predicitons[] 
+            """
+            predictions
+                A list of dictionaries 
+                each dict contains one key "instances"
+                the key maps to class "Instances" and has the following keys: 
+                    "pred_boxes", "pred_classes", "scores", "pred_masks", "pred_keypoints"
+
+            """   
             elif "instances" in predictions:
+
                 predictions = predictions["instances"].to(self.cpu_device)
+                print(predictions.pred_masks)
                 vis_frame = video_visualizer.draw_instance_predictions(frame, predictions)
+
             elif "sem_seg" in predictions:
                 vis_frame = video_visualizer.draw_sem_seg(
                     frame, predictions["sem_seg"].argmax(dim=0).to(self.cpu_device)
@@ -106,6 +121,7 @@ class VisualizationDemo(object):
             return vis_frame
 
         frame_gen = self._frame_from_video(video)
+
         if self.parallel:
             buffer_size = self.predictor.default_buffer_size
 
@@ -124,8 +140,11 @@ class VisualizationDemo(object):
                 frame = frame_data.popleft()
                 predictions = self.predictor.get()
                 yield process_predictions(frame, predictions)
+
+        ##  nonparallel version        
         else:
             for frame in frame_gen:
+                # original frame, prediction
                 yield process_predictions(frame, self.predictor(frame))
 
 

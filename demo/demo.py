@@ -45,7 +45,7 @@ def get_parser():
         "--output",
         help="A file or directory to save output visualizations. "
         "If not given, will show output in an OpenCV window.",
-    )
+    ) ## output folder
 
     parser.add_argument(
         "--confidence-threshold",
@@ -109,7 +109,9 @@ if __name__ == "__main__":
             if cv2.waitKey(1) == 27:
                 break  # esc to quit
         cv2.destroyAllWindows()
+
     elif args.video_input:
+        # get video info using cv2
         video = cv2.VideoCapture(args.video_input)
         width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -117,13 +119,17 @@ if __name__ == "__main__":
         num_frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
         basename = os.path.basename(args.video_input)
 
-        if args.output:
+
+        if args.output: #  has an output folder
             if os.path.isdir(args.output):
                 output_fname = os.path.join(args.output, basename)
                 output_fname = os.path.splitext(output_fname)[0] + ".mkv"
             else:
                 output_fname = args.output
+
             assert not os.path.isfile(output_fname), output_fname
+
+            # prepare a writer 
             output_file = cv2.VideoWriter(
                 filename=output_fname,
                 # some installation of opencv may not support x264 (due to its license),
@@ -133,7 +139,10 @@ if __name__ == "__main__":
                 frameSize=(width, height),
                 isColor=True,
             )
+
         assert os.path.isfile(args.video_input)
+
+        # vis_frame is the processed frame based on prediction
         for vis_frame in tqdm.tqdm(demo.run_on_video(video), total=num_frames):
             if args.output:
                 output_file.write(vis_frame)
@@ -142,8 +151,9 @@ if __name__ == "__main__":
                 cv2.imshow(basename, vis_frame)
                 if cv2.waitKey(1) == 27:
                     break  # esc to quit
-        video.release()
+        video.release() # original video write to local 
+
         if args.output:
-            output_file.release()
+            output_file.release() # processed video  write to local
         else:
             cv2.destroyAllWindows()
